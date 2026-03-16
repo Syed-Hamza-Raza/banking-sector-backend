@@ -1,0 +1,64 @@
+const userModel = require("../models/user.model");
+const jwt = require("jsonwebtoken")
+
+async function authMiddleware(req, res, next) {
+    const token = req.cookies.token
+        || req.headers.authorization?.split(" ")[1]
+
+    if (!token) {
+        return res.status(401).json({
+            message: "Unauthorize User",
+            status: false
+        })
+    }
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET)
+        const user = await userModel.findOne({ _id: decoded.userId })
+
+        req.user = user;
+
+        next();
+    } catch (e) {
+        return res.status(401).json({
+            message: "Unauthorize User",
+            status: false
+        })
+    }
+}
+
+async function authSystemUserMiddleware(req, res, next) {
+    const token = req.cookies.token
+        || req.headers.authorization?.split(" ")[1]
+
+    if (!token) {
+        return res.status(401).json({
+            message: "Unauthorize User",
+            status: false
+        })
+    }
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET)
+        const user = await userModel.findOne({ _id: decoded.userId }).select("+systemUser");
+        console.log("user", user)
+        if (!user.systemUser){
+            return res.status(403).json({
+                message: "Forbidden User, not a system user"
+            })
+        }
+        req.user = user;
+
+        next();
+    } catch (e) {
+        return res.status(401).json({
+            message: "Unauthorize User",
+            status: false
+        })
+    }
+}
+
+module.exports = {
+    authMiddleware,
+    authSystemUserMiddleware
+}
